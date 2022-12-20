@@ -4,7 +4,10 @@ import numpy.linalg as la
 import os
 import os.path
 from scipy.linalg import lu_factor, lu_solve
+from STMint.STMint import STMint
 import matplotlib.pyplot as plt
+import time
+
 
 
 #class containing the variational data and ability to solve BVPs
@@ -137,21 +140,31 @@ class OrbitVariationalData:
 		
 
 
-
 #store precomputed data in the following files
 fileName = "halo"
 trvFileName = "./" + fileName + "_trvs.mat"
 STMFileName = "./" + fileName + "_STMs.mat"
-#find a SEL2 Halo with .002 amplitude in canonical units
-Az=0.002
+#initial conditions for sun earth halo orbit
+ics = [1.00822114953991, 0., -0.001200000000000000, 0., 0.010290010931740649, 0.]
+T = 3.1002569555488506
 #use 2^8 subdivisions when calculating the values of the STM
 exponent=8
 
+
+"""
 #call wolfram script if data file does not already exist
 if not os.path.isfile(trvFileName): 
 #1 denotes that the halo orbit is found rather than an ic being given
 #2^8 samples along a Northern SEL2 halo with .002 amplitude
 	os.system(' '.join(['wolframscript produce_halo_data.wls', '1', 'SE', 'S', str(Az), fileName, str(exponent)]))
+"""
+#call wolfram script if data file does not already exist
+if not os.path.isfile(trvFileName):
+	threeBodyInt = STMint(preset="threeBodySunEarth")
+	[states, STMs, tVals] = threeBodyInt.dynVar_int([0,T], ics, output='all', max_step=.00001, t_eval=np.linspace(0, T, num = 2**exponent + 1))
+	scipy.io.savemat(trvFileName, {"trvs": np.hstack(tVals, states)})
+	scipy.io.savemat(STMFileName, {"STMs": STMs})
+
 
 #load data from file
 trvmat = list(scipy.io.loadmat(trvFileName).values())[0]
@@ -174,6 +187,22 @@ tf = 3*7.*2.*np.pi/365.
 r0rel = np.array([-100000.,0.,0.])
 rfrel = np.array([0,0,100000])
 #precompute variational data for this time period
+
+#timing test
+timesum = 0.
+timenum = 100000
+for i in range(timenum):
+	t1 = time.time()
+	orb.findSTM(t0,tf)
+	t2 = time.time()
+	timesum += t2 - t1
+print("timing")
+print(timesum/timenum)
+	
+
+
+
+
 precomputeData = orb.precompute_lu(t0, tf)
 #use for this one boundary value solution (same variational data could be used multiple times)
 dvs = orb.solve_bvp_cost_convenience(precomputeData, r0rel, rfrel)
