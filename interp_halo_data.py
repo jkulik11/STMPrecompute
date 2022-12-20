@@ -141,12 +141,14 @@ class OrbitVariationalData:
 
 
 #store precomputed data in the following files
-fileName = "halo"
+fileName = "haloNewest"
 trvFileName = "./" + fileName + "_trvs.mat"
 STMFileName = "./" + fileName + "_STMs.mat"
 #initial conditions for sun earth halo orbit
-ics = [1.00822114953991, 0., -0.001200000000000000, 0., 0.010290010931740649, 0.]
-T = 3.1002569555488506
+#ics = [1.00822114953991, 0., -0.001200000000000000, 0., 0.010290010931740649, 0.]
+#T = 3.1002569555488506
+ics = [1.0079262817004409, 0., -0.002000000000000000, 0., 0.011250447954520019, 0.]
+T = 3.095762839166285
 #use 2^8 subdivisions when calculating the values of the STM
 exponent=8
 
@@ -161,21 +163,27 @@ if not os.path.isfile(trvFileName):
 #call wolfram script if data file does not already exist
 if not os.path.isfile(trvFileName):
 	threeBodyInt = STMint(preset="threeBodySunEarth")
-	[states, STMs, tVals] = threeBodyInt.dynVar_int([0,T], ics, output='all', max_step=.00001, t_eval=np.linspace(0, T, num = 2**exponent + 1))
-	scipy.io.savemat(trvFileName, {"trvs": np.hstack(tVals, states)})
-	scipy.io.savemat(STMFileName, {"STMs": STMs})
+	[states, STMs, tVals] = threeBodyInt.dynVar_int([0,T], ics, output='all', max_step=.001, t_eval=np.linspace(0, T, num = 2**exponent + 1))
+	scipy.io.savemat(trvFileName, {"trvs": np.hstack((np.transpose(np.array([tVals])), states))})
+	STMPieces = []
+	for i in range(len(STMs)-1):
+		#find the stm of an individual segment
+		#taking the inverse multiplied on the right in a numerically stable/fast way
+		STMPieces.append(np.transpose(la.solve(np.transpose(STMs[i]), np.transpose(STMs[i+1]))))
+	scipy.io.savemat(STMFileName, {"STMs": STMPieces})
 
 
 #load data from file
-trvmat = list(scipy.io.loadmat(trvFileName).values())[0]
+trvmat = list(scipy.io.loadmat(trvFileName).values())[-1]
 #period
 T = trvmat[-1, 0]
+print(T)
 #Take off last element which is same as first element up to integration error tolerances (periodicity)
+print(trvmat[-1])
 trvmat = trvmat[:-1]
 
-#remove identity element at beginning
-STMmat = list(scipy.io.loadmat(STMFileName).values())[1:]
-
+STMmat = list(scipy.io.loadmat(STMFileName).values())[-1]
+print(STMmat)
 #initialize object used for computation
 orb = OrbitVariationalData(STMmat, trvmat, T, exponent)
 
