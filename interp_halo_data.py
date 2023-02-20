@@ -164,10 +164,10 @@ class OrbitVariationalData:
 		return np.einsum("jk,j,k->", stt, relAugState, relAugState)
 		
 		
-	#find the approximate cost of a relative transfer in mps (for repeated calls with same initial and final times)
+	#find the approximate cost of a relative transfer (for repeated calls with same initial and final times)
 	#positions supplied in km
 	#Assume inertial relative velocities are zero
-	#return delta-v in m/s
+	#return energy in canonical units
 	def solve_bvp_cost_convenience(self, precomputeData, r0rel, rfrel):
 		(stmxx, stmlx, stmll, stt, lu, piv) = precomputeData
 		r0rel = self.posKMtoAU(r0rel)
@@ -177,6 +177,14 @@ class OrbitVariationalData:
 		#all in canonical units at this point-can be fed into bvp_solver function
 		en = self.solve_bvp_cost(stmxx, stmlx, stmll, stt, lu, piv, np.concatenate((r0rel, v0rel)), np.concatenate((rfrel, vfrel)))
 		return en
+
+	#convert delta-v cost to m/s
+	def veltoMpS(self, vel):
+		return vel*29784.
+	#convert position from KM to AU
+	def posKMtoAU(self, pos):
+		return pos / 149597870.7
+
 		
 def optControlDynamics():
 	x,y,z,vx,vy,vz,lx,ly,lz,lvx,lvy,lvz,En=symbols("x,y,z,vx,vy,vz,lx,ly,lz,lvx,lvy,lvz,En")
@@ -200,13 +208,6 @@ def optControlDynamics():
 	#return Matrix([x,y,z,vx,vy,vz]), RHS
 	return variables, dynamics
 
-#TODO: switch to astropy unit conversions
-#convert delta-v cost to m/s
-def veltoMpS(self, vel):
-	return vel*29784.
-#convert position from KM to AU
-def posKMtoAU(self, pos):
-	return pos / 149597870.7
 
 #store precomputed data in the following files
 fileName = "haloEnergy"
@@ -214,10 +215,10 @@ trvFileName = "./" + fileName + "_trvs.mat"
 STMFileName = "./" + fileName + "_STMs.mat"
 STTFileName = "./" + fileName + "_STTs.mat"
 #initial conditions for sun earth halo orbit
-#ics = [1.00822114953991, 0., -0.001200000000000000, 0., 0.010290010931740649, 0.]
-#T = 3.1002569555488506
-ics = [1.0079262817004409, 0., -0.002000000000000000, 0., 0.011250447954520019, 0., 0., 0., 0., 0., 0., 0., 0.]
-T = 3.095762839166285
+ics = [1.00822114953991, 0., -0.001200000000000000, 0., 0.010290010931740649, 0., 0., 0., 0., 0., 0., 0., 0.]
+T = 3.1002569555488506
+#ics = [1.0079262817004409, 0., -0.002000000000000000, 0., 0.011250447954520019, 0., 0., 0., 0., 0., 0., 0., 0.]
+#T = 3.095762839166285
 #use 2^8 subdivisions when calculating the values of the STM
 exponent=8
 
@@ -230,8 +231,10 @@ if not os.path.isfile(trvFileName):
 	t_step = T/2.**exponent
 	curState = ics
 	states = [ics]
-	STMs = [np.identity(12)]
-	STTs = [np.zeros((12,12))]
+	#STMs = [np.identity(12)]
+	#STTs = [np.zeros((12,12))]
+	STMs = []
+	STTs = []
 	tVals = np.linspace(0, T, num = 2**exponent + 1)
 	for i in range(2**exponent):
 		[state, STM, STT] = threeBodyInt.dynVar_int2([0,t_step], curState, output='final', max_step=.001)
@@ -257,10 +260,10 @@ STTmat = list(scipy.io.loadmat(STTFileName).values())[-1]
 orb = OrbitVariationalData(STTmat, STMmat, trvmat, T, exponent)
 
 
-#test on a 10k km transfer in a couple weeks
-t0 = 0*7.*2.*np.pi/365.
+#test on a 10k km transfer in two weeks
+t0 = 1.*7.*2.*np.pi/365.
 #two weeks
-tf = 2.0*7.*2.*np.pi/365.
+tf = 3.*7.*2.*np.pi/365.
 r0rel = np.array([10000.,0.,0.])
 rfrel = np.array([0,0,0])
 #precompute variational data for this time period
@@ -272,42 +275,9 @@ print("energy in cm^2/s^3")
 print(en*10000.*177.004)
 
 
-#lets plot transfer costs as a function of transfer time to make sure the result looks reasonable
-ts = np.arange(t0+7.*2.*np.pi/365., 1.*T, 0.01)
-#print(list(map(lambda t:1+t, ts)))
+#plot transfer costs as a function of transfer time (between 1 and 10 weeks)
+ts = np.arange(t0+7.*2.*np.pi/365., 10.*7.*2.*np.pi/365., 0.01)
 ens = list(map(lambda t:orb.solve_bvp_cost_convenience(orb.precompute_lu(t0, t), r0rel, rfrel), ts))
 plt.figure()
 plt.plot(ts, ens)
 plt.show()
-
-
-test = orb.findSTM(0,T/2.+.000000000001)
-check = orb.refinedList[-2][0]
-check1 = orb.refinedListSTTs[-2][0]
-#print(test[0]-check)
-#print(test[1]-check1)
-
-
-#testing cases
-
-#test = orb.findSTM(0,7.0000*T/2.**exponent)
-#check = np.matmul(STMmat[6], np.matmul(orb.refinedList[1][2],orb.refinedList[2][0]))
-
-#test = orb.findSTM(0,T-.000000000001)
-#check = orb.refinedList[-1][0]
-
-#test = orb.findSTM(0,T/2.+.000000000001)
-#check = orb.refinedList[-2][0]
-
-#test = orb.findSTM(0,3.*T/2.)
-#check = np.matmul(orb.refinedList[-2][0], orb.refinedList[-1][0])
-
-#test = orb.findSTM(T/2.,3.*T/2.)
-#check = np.matmul(orb.refinedList[-2][0], orb.refinedList[-2][1])
-
-#print(test)
-#print(check)
-#print(test-check)
-
-
-
