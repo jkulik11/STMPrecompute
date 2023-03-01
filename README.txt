@@ -1,4 +1,4 @@
-The interp_halo_data.py file contains the class necessary to calculate energy optimal control relative transfer costs. Variational data is computed and stored once in a user chosen file, then accessed later.
+The OrbitVariationalData.py file contains the class necessary to calculate energy optimal control relative transfer costs. Variational data is computed and stored once in a user chosen file within interp_halo_data.py, then accessed later. Rendezvous cost calculations are demonstrated in interp_halo_data.py.
 
 The OrbitVariationalData object takes in the STM and trajectory data along the reference orbit assuming 2^exponent discretized pieces of the orbit.
 
