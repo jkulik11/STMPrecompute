@@ -62,10 +62,10 @@ if not os.path.isfile(trvFileName):
 	tVals = np.linspace(0, T, num = 2**exponent + 1)
 	for i in range(2**exponent):
 		[state, STM, STT] = threeBodyInt.dynVar_int2([0,t_step], curState, output='final', max_step=.001)
-		states.append(state[0])
+		states.append(state)
 		STMs.append(STM[:12,:12])
 		STTs.append(STT[12,:12,:12])
-		curState = state[0]
+		curState = state
 	scipy.io.savemat(trvFileName, {"trvs": np.hstack((np.transpose(np.array([tVals])), states))})
 	scipy.io.savemat(STMFileName, {"STMs": STMs})
 	scipy.io.savemat(STTFileName, {"STTs": STTs})
