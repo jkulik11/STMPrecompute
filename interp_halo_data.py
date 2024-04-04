@@ -18,7 +18,7 @@ def optControlDynamics():
 	mu2 = mu
 	r1 = sqrt((x + mu2)**2 + (y**2) + (z**2))
 	r2 = sqrt((x - mu1)**2 + (y**2) + (z**2))
-	U = (-1/2)*(mu1*(r1**2) + mu2*(r2**2)) - (mu1/r1) - (mu2/r2)
+	U = (-1./2.)*(x**2+y**2) - (mu1/r1) - (mu2/r2)
 	dUdx = diff(U,x)
 	dUdy = diff(U,y)
 	dUdz = diff(U,z)
